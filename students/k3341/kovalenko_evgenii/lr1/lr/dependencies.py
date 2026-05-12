@@ -10,7 +10,7 @@ security = HTTPBearer()
 
 
 def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security),
-                     session: Session = Depends(get_session())) -> User:
+                     session: Session = Depends(get_session)) -> User:
     token = creds.credentials
 
     try:
@@ -18,6 +18,7 @@ def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security),
         if user_id is None:
             raise HTTPException(status_code=401, detail='invalid token')
     except Exception as exc:
+        print(f"Decode error: {exc}")
         raise HTTPException(status_code=401, detail='invalid token')
 
     user = session.get(User, user_id)

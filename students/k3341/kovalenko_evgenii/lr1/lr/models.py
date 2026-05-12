@@ -30,7 +30,7 @@ class User(SQLModel, table=True):
 
 
 class Task(SQLModel, table=True):
-    id: Optional[int] = Field(default=True, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     title: str
     description: Optional[str] = ''
     deadline: Optional[datetime] = None
@@ -48,7 +48,7 @@ class Task(SQLModel, table=True):
 
 
 class Category(SQLModel, table=True):
-    id: Optional[int] = Field(default=True, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(unique=True)
     description: Optional[str] = ''
 
@@ -67,7 +67,7 @@ class TaskCategoryLink(SQLModel, table=True):
 
 
 class TimeLog(SQLModel, table=True):
-    id: Optional[int] = Field(default=True, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     task_id: int = Field(foreign_key='task.id')
     start_time: datetime
     end_time: Optional[datetime] = None
@@ -78,7 +78,7 @@ class TimeLog(SQLModel, table=True):
 
 
 class Notification(SQLModel, table=True):
-    id: Optional[int] = Field(default=True, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key='user.id')
     task_id: Optional[int] = Field(foreign_key='task.id')
     message: str
@@ -90,7 +90,7 @@ class Notification(SQLModel, table=True):
 
 
 class DailySchedule(SQLModel, table=True):
-    id: Optional[int] = Field(default=True, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key='user.id')
     date: datetime
     planned_hours: float = 0.0

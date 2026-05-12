@@ -50,3 +50,9 @@ class CategoryCreate(BaseModel):
 
 class AssignCategory(BaseModel):
     notes: Optional[str] = None
+
+
+class ScheduleCreate(BaseModel):
+    date: datetime
+    planned_hours: float
+    notes: str = ""
