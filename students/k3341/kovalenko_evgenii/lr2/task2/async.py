@@ -55,4 +55,4 @@ async def main():
 if __name__ == '__main__':
     start_time = time()
     run(main())
-    print(f'threads: {time() - start_time} s')
+    print(f'async: {time() - start_time} s')

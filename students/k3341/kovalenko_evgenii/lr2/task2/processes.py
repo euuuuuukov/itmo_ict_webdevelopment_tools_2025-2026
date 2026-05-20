@@ -56,4 +56,4 @@ def main():
 if __name__ == '__main__':
     start_time = time()
     main()
-    print(f'threads: {time() - start_time} s')
+    print(f'processes: {time() - start_time} s')
