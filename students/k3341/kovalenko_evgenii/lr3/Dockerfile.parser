@@ -1,4 +1,4 @@
-from python:3.10
+from python:3.10-slim
 
 workdir /code
 
@@ -8,5 +8,3 @@ run pip install --no-cache-dir -r requirements.txt
 copy ./parser /code/parser
 
 env PYTHONPATH=/code
-
-cmd ['uvicorn', 'parser.main:app', '--host', '0.0.0.0', '--port', '8001']

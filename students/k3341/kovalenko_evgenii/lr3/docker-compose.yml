@@ -19,6 +19,16 @@ services:
       retries: 5
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   app:
     build:
       context: .
@@ -27,15 +37,18 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
-      DB_URL: postgresql://postgres:1212@localhost/timemaster_db
+      DB_URL: postgresql://postgres:1212@db/timemaster_db
       JWT_SECRET_KEY: oOmaxDyr-8uF6fOKDkgxOjO7mgxbwG97tp6HjemoxM8
       JWT_ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      PYTHONPATH: /code
     ports:
       - "8000:8000"
     volumes:
-      - ./app:/code/app
+      - ./app:/code
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   parser:
@@ -47,12 +60,29 @@ services:
       db:
         condition: service_healthy
     environment:
-      DB_URL: postgresql://postgres:1212@localhost/timemaster_db
+      DB_URL: postgresql://postgres:1212@db/timemaster_db
+      PYTHONPATH: /code
     ports:
       - "8001:8001"
     volumes:
       - ./parser:/code/parser
     command: uvicorn parser.main:app --host 0.0.0.0 --port 8001 --reload
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_URL: postgresql://postgres:1212@db/timemaster_db
+      PYTHONPATH: /code
+    volumes:
+      - ./app:/code
+    command: celery -A celery_app worker --loglevel=info
 
 volumes:
   postgres_data:

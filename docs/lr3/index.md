@@ -1,0 +1,155 @@
+# Лабораторная работа 3: Упаковка FastAPI приложения в Docker, Работа с источниками данных и Очереди
+
+<details>
+
+<summary>`Dockerfile` для основного приложения</summary>
+
+```Dockerfile
+from python:3.10-slim
+
+workdir /code
+
+copy ./app/requirements.txt /code/requirements.txt
+run pip install --no-cache-dir -r requirements.txt
+
+copy ./app /code
+
+env PYTHONPATH=/code
+```
+
+</details>
+
+<details>
+
+<summary>`Dockerfile` для парсера</summary>
+
+```Dockerfile
+from python:3.10-slim
+
+workdir /code
+
+copy ./parser/requirements.txt /code/requirements.txt
+run pip install --no-cache-dir -r requirements.txt
+
+copy ./parser /code/parser
+
+env PYTHONPATH=/code
+```
+
+</details>
+
+<details>
+
+<summary>`Dockerfile` для селери воркера</summary>
+
+```Dockerfile
+from python:3.10-slim
+
+workdir /code
+
+copy ./app/requirements.txt /code/requirements.txt
+run pip install --no-cache-dir -r requirements.txt
+
+copy ./app /code
+
+env PYTHONPATH=/code
+```
+
+</details>
+
+<details>
+
+<summary>`docker-compose.yml`</summary>
+
+```yaml
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: timemaster_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1212
+      POSTGRES_DB: timemaster_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d timemaster_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: timemaster_app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_URL: postgresql://postgres:1212@db/timemaster_db
+      JWT_SECRET_KEY: oOmaxDyr-8uF6fOKDkgxOjO7mgxbwG97tp6HjemoxM8
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      PYTHONPATH: /code
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/code
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  parser:
+    build:
+      context: .
+      dockerfile: Dockerfile.parser
+    container_name: timemaster_parser
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: postgresql://postgres:1212@db/timemaster_db
+      PYTHONPATH: /code
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./parser:/code/parser
+    command: uvicorn parser.main:app --host 0.0.0.0 --port 8001 --reload
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_URL: postgresql://postgres:1212@db/timemaster_db
+      PYTHONPATH: /code
+    volumes:
+      - ./app:/code
+    command: celery -A celery_app worker --loglevel=info
+
+volumes:
+  postgres_data:
+```
+
+</details>

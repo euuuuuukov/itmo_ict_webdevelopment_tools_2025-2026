@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 
 from fastapi import FastAPI, Depends, HTTPException, Body
 from sqlmodel import Session, select, func
-from typing import List
 from httpx import AsyncClient, TimeoutException, HTTPStatusError, RequestError
 
 from connection import init_db, get_session
@@ -10,6 +9,7 @@ from models import *
 from schemas import *
 from security import get_password_hash, verify_password, create_access_token
 from dependencies import get_current_user
+from tasks import parse_task
 
 
 app = FastAPI()
@@ -306,17 +306,13 @@ def analytics(session: Session = Depends(get_session), user: User = Depends(get_
 
 @app.post('/parse')
 async def parse(urls: List[str] = Body(..., embed=False), user: User = Depends(get_current_user)):
-    async with AsyncClient() as client:
-        try:
-            resp = await client.post('http://parser:8001/parse', json={'urls': urls, 'user_id': user.id}, timeout=30)
-            resp.raise_for_status()
-            return resp.json()
-        except TimeoutException:
-            raise HTTPException(status_code=504, detail='parser timeout')
-        except HTTPStatusError as e:
-            raise HTTPException(status_code=e.response.status_code, detail='parser error')
-        except RequestError:
-            raise HTTPException(status_code=503, detail='parser unavailable')
+    task = parse_task.delay(urls, user.id)
+    return {'task_id': task.id, 'status': 'queued'}
+
+@app.get('/task-status/{task_id}')
+def get_task_status(task_id: str):
+    task = parse_task.AsyncResult(task_id)
+    return {'task_id': task_id, 'status': task.status, 'result': task.result if task.ready() else None}
 
 
 @app.on_event('startup')
